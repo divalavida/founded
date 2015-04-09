@@ -1,0 +1,67 @@
+import requests
+import re
+ 
+# List of companies. Eventually you'd want to load this from a file
+import csv
+
+companies = []
+
+f = open ('companies - Sheet3.csv', 'rt')
+reader = csv.reader(f)
+for row in reader : 
+    print row
+    if len(row) > 0:
+        companies.append([row[0]]) 
+
+
+# The base url. We append the company name to this url
+base_url = "http://www.linkedin.com/company/"
+ 
+# When the request goes out, it has 'headers'. The user-agent header tells 
+# linkedin that this script is actually the Chrome browser. It isn't actually --
+# we're spoofing Chrome because otherwise Linkedin doesn't give us the page we
+# want. They don't want to be scraped.
+headers = {'user-agent': 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36'}
+ 
+# This is the regular expression we used to pull out when it was founded. The
+# ([0-9]*) tells the regular expression engine to capture any number of the
+# characters [0-9]. Anything in square brackets [] is called a 
+# 'character class', so [0-9] is a character class of the numbers. The * says
+# 'match any number of the previous thing', which is the character class [0-9].
+pattern = "<h4>Founded</h4>\n<p>([0-9]*)</p>"
+def getfounded(name):
+    url = base_url + name
+    print "requesting " + url
+ 
+    # request the page
+    result = requests.get(url, headers=headers)
+
+    # Run the regex against the page's html source
+    matches = re.search(pattern, result.text)
+    
+    if matches is not None:
+        return matches.group(1)
+    else: 
+        return None 
+
+outfile = open('processed.csv','wt')
+writer = csv.writer(outfile)
+
+for company in companies:
+    print "fetching company " + company[0]
+    lowername = company[0].lower().replace(',','').replace('\'','')
+
+    year = (getfounded(lowername.replace(' ','')) or
+        getfounded(lowername.replace(' ','-')))
+    if year is not None:
+
+    # print out the first match group which will contain that [0-9]*
+        print "founded in: " + year
+
+        company.append(year)
+    writer.writerow(company)
+
+
+
+
+
